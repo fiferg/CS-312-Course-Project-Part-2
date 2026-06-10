@@ -1,0 +1,19 @@
+# Terraform state and local overrides
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.tfvars
+
+# Generated SSH key
+MC-Key.pem
+
+# Ansible retry files
+*.retry
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/

@@ -1,0 +1,96 @@
+---
+- name: Configure Minecraft Server
+  hosts: minecraft
+  become: true
+  vars:
+    mc_user: ubuntu
+    mc_home: /home/ubuntu/minecraft
+    mc_version: "1.21.4"
+    mc_jar: "minecraft_server.{{ mc_version }}.jar"
+    # Server JAR SHA1 for Minecraft 1.21.4
+    mc_jar_url: "https://piston-data.mojang.com/v1/objects/4707d00eb834b446575d89a61a11b5d548d8c001/server.jar"
+    java_package: openjdk-21-jre-headless
+    java_bin: /usr/lib/jvm/java-21-openjdk-amd64/bin/java
+
+  tasks:
+    # ── System update & Java ──────────────────────────────────────────────────
+
+    - name: Update apt package cache
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: dist
+
+    - name: Install Java 21
+      apt:
+        name: "{{ java_package }}"
+        state: present
+
+    # ── Minecraft directory & JAR ─────────────────────────────────────────────
+
+    - name: Create Minecraft directory
+      file:
+        path: "{{ mc_home }}"
+        state: directory
+        owner: "{{ mc_user }}"
+        group: "{{ mc_user }}"
+        mode: "0755"
+
+    - name: Download Minecraft server JAR
+      get_url:
+        url: "{{ mc_jar_url }}"
+        dest: "{{ mc_home }}/{{ mc_jar }}"
+        owner: "{{ mc_user }}"
+        group: "{{ mc_user }}"
+        mode: "0644"
+
+    # ── EULA & initial config ─────────────────────────────────────────────────
+
+    - name: Accept the Minecraft EULA
+      copy:
+        content: "eula=true\n"
+        dest: "{{ mc_home }}/eula.txt"
+        owner: "{{ mc_user }}"
+        group: "{{ mc_user }}"
+        mode: "0644"
+
+    - name: Write server.properties
+      copy:
+        dest: "{{ mc_home }}/server.properties"
+        owner: "{{ mc_user }}"
+        group: "{{ mc_user }}"
+        mode: "0644"
+        content: |
+          server-port=25565
+          gamemode=survival
+          difficulty=normal
+          max-players=20
+          online-mode=true
+          level-name=world
+          motd=A Minecraft Server (IaC Edition)
+
+    # ── systemd service ───────────────────────────────────────────────────────
+
+    - name: Deploy minecraft systemd service
+      template:
+        src: templates/minecraft.service.j2
+        dest: /etc/systemd/system/minecraft.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload systemd
+
+    - name: Enable and start the Minecraft service
+      systemd:
+        name: minecraft
+        enabled: true
+        state: started
+        daemon_reload: true
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true

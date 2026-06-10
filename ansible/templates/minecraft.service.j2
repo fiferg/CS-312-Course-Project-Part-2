@@ -1,0 +1,23 @@
+[Unit]
+Description=Minecraft Server {{ mc_version }}
+After=network.target
+
+[Service]
+User={{ mc_user }}
+WorkingDirectory={{ mc_home }}
+
+# Start the server
+ExecStart={{ java_bin }} -Xmx1024M -Xms512M -jar {{ mc_home }}/{{ mc_jar }} nogui
+
+# Send SIGTERM so the JVM can flush world data gracefully before stopping
+ExecStop=/bin/kill -s SIGTERM $MAINPID
+
+# Give the server up to 60 seconds to write world data on shutdown
+TimeoutStopSec=60
+
+# Restart automatically if the process crashes
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
